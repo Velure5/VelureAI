@@ -15,7 +15,7 @@ const App = () => {
   const animationFrameId = useRef(null);
 
   // State for image previews (placeholders)
-  const [originalImage, setOriginalImage] = useState('https://placehold.co/600x400/E0E0E0/333333?text=Original+Image');
+  const [originalImage, setOriginalImage] = useState('https://placehold.co/600x400/E0E0E0/333333?text=Upload+Your+Image');
   const [appliedPreset, setAppliedPreset] = useState('None');
 
   // Carousel images state - 6 distinct images
@@ -197,44 +197,64 @@ const App = () => {
     const canvas = canvasRef.current;
     if (!canvas || !originalImage) {
       console.error('Canvas or original image not available for download.');
+      alert('Please upload an image first before downloading.');
       return;
     }
 
+    // Check if the image is a data URL (local upload) or external URL
+    const isDataURL = originalImage.startsWith('data:');
+    
     const img = new Image();
-    img.crossOrigin = 'Anonymous'; // Required for loading cross-origin images to canvas
-    img.src = originalImage;
+    
+    if (isDataURL) {
+      // For local uploaded images, we can use them directly
+      img.src = originalImage;
+    } else {
+      // For external images, try with CORS but handle errors gracefully
+      img.crossOrigin = 'Anonymous';
+      img.src = originalImage;
+    }
 
     img.onload = () => {
-      // Set canvas dimensions to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
+      try {
+        // Set canvas dimensions to match the image
+        canvas.width = img.width;
+        canvas.height = img.height;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.error('Could not get 2D context for canvas.');
-        return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error('Could not get 2D context for canvas.');
+          alert('Unable to process image. Please try again.');
+          return;
+        }
+
+        // Apply the CSS filters to the canvas context
+        ctx.filter = getFilterStyle();
+
+        // Draw the image onto the canvas
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Reset filter for next draw if needed
+        ctx.filter = 'none';
+
+        // Create a temporary link element to trigger download
+        const link = document.createElement('a');
+        link.download = 'velure_edited_image.png';
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('Download successful!');
+      } catch (error) {
+        console.error('Error during download process:', error);
+        alert('Download failed. This might be due to CORS restrictions with external images. Please upload your own image instead.');
       }
-
-      // Apply the CSS filters to the canvas context
-      ctx.filter = getFilterStyle();
-
-      // Draw the image onto the canvas
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // Reset filter for next draw if needed (though not strictly necessary for single download)
-      ctx.filter = 'none';
-
-      // Create a temporary link element to trigger download
-      const link = document.createElement('a');
-      link.download = 'velure_edited_image.png';
-      link.href = canvas.toDataURL('image/png'); // Get data URL of the canvas content
-      document.body.appendChild(link); // Append to body (required for Firefox)
-      link.click(); // Programmatically click the link
-      document.body.removeChild(link); // Clean up
     };
 
     img.onerror = (error) => {
       console.error('Error loading image for canvas:', error);
+      alert('Unable to load image for download. This is likely due to CORS restrictions. Please upload your own image instead of using external URLs.');
     };
   };
 
@@ -390,6 +410,7 @@ const App = () => {
         {/* Upload Image Section */}
         <section className={`mb-10 p-6 rounded-xl shadow-lg flex flex-col items-center justify-center transition-colors duration-300 bg-gray-800 shadow-slate-700/50`}>
           <h2 className="text-xl font-semibold mb-4">Upload Your Image</h2>
+          <p className="text-sm text-gray-300 mb-4 text-center">Upload your own image to enable download functionality</p>
           <label htmlFor="image-upload" className={`cursor-pointer flex items-center gap-2 px-6 py-3 rounded-full text-lg font-medium transition-all duration-300 button-glassmorphism text-white hover:bg-gray-700/50`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Select Image
             <input
