@@ -237,15 +237,101 @@ const App = () => {
         // Reset filter for next draw if needed
         ctx.filter = 'none';
 
-        // Create a temporary link element to trigger download
-        const link = document.createElement('a');
-        link.download = 'velure_edited_image.png';
-        link.href = canvas.toDataURL('image/png');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Get the data URL from canvas
+        const dataURL = canvas.toDataURL('image/png');
         
-        console.log('Download successful!');
+        // Detect if we're on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // Mobile-friendly download approach
+          try {
+            // Try to use the download attribute first (works on some mobile browsers)
+            const link = document.createElement('a');
+            link.download = 'velure_edited_image.png';
+            link.href = dataURL;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            console.log('Mobile download attempted with download attribute');
+          } catch (mobileError) {
+            console.log('Download attribute failed, trying alternative method');
+            
+            // Alternative: Open in new tab for mobile users to save manually
+            const newWindow = window.open();
+            if (newWindow) {
+              newWindow.document.write(`
+                <html>
+                  <head>
+                    <title>Velure AI - Edited Image</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                      body { 
+                        margin: 0; 
+                        padding: 20px; 
+                        background: #1a1a1a; 
+                        color: white; 
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                      }
+                      img { 
+                        max-width: 100%; 
+                        height: auto; 
+                        border-radius: 8px;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                      }
+                      .download-btn {
+                        display: inline-block;
+                        margin: 20px 10px;
+                        padding: 12px 24px;
+                        background: #2196f3;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: bold;
+                      }
+                      .instructions {
+                        margin: 20px 0;
+                        padding: 15px;
+                        background: rgba(255,255,255,0.1);
+                        border-radius: 8px;
+                        line-height: 1.5;
+                      }
+                    </style>
+                  </head>
+                  <body>
+                    <h1>Your Edited Image</h1>
+                    <img src="${dataURL}" alt="Edited Image" />
+                    <div class="instructions">
+                      <p><strong>To save this image:</strong></p>
+                      <p>• <strong>iOS:</strong> Long press the image and select "Save to Photos"</p>
+                      <p>• <strong>Android:</strong> Long press the image and select "Save image" or "Download image"</p>
+                      <p>• <strong>Other:</strong> Right-click and select "Save image as..."</p>
+                    </div>
+                    <a href="${dataURL}" class="download-btn" download="velure_edited_image.png">Download Image</a>
+                    <br><br>
+                    <button onclick="window.close()" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+                  </body>
+                </html>
+              `);
+              newWindow.document.close();
+            } else {
+              // Fallback: Show data URL for manual copying
+              alert('Please long-press the image below and select "Save to Photos" or "Download image":\n\n' + dataURL.substring(0, 100) + '...');
+            }
+          }
+        } else {
+          // Desktop download approach
+          const link = document.createElement('a');
+          link.download = 'velure_edited_image.png';
+          link.href = dataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          console.log('Desktop download successful!');
+        }
+        
       } catch (error) {
         console.error('Error during download process:', error);
         alert('Download failed. This might be due to CORS restrictions with external images. Please upload your own image instead.');
